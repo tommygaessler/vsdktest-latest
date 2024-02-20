@@ -17,9 +17,17 @@ let geoRegions
 let cloudRecordingOption
 let cloudRecordingElection
 
+let maxVideosPerPage = 9
+let maxUsers = 10000
+let currentPage = 0
+
+// let videoUsers = [[0,1,2,3,4,5,6,7,8], [9,10,11,12,13,14,15]]
+
 zmClient.init('US-en', 'Global', {
-  // enforceMultipleVideos: true,
-  patchJsMedia: true
+  enforceMultipleVideos: true,
+  patchJsMedia: true,
+  leaveOnPageUnload: true,
+  stayAwake: true
 })
 
 function getSignature() {
@@ -60,29 +68,50 @@ function joinSession(signature) {
 
     console.log(zmClient.getSessionInfo())
 
-    if(zmClient.getAllUser().length > 2) {
-      document.querySelector('#error').style.display = 'block'
-      document.querySelector('#error').textContent = 'Session full.'
-      setTimeout(() => {
-        leaveSession()
-      }, 1000)
-    } else {
-      document.querySelector('#session').style.display = 'flex'
-      document.querySelector('#landing').style.display = 'none'
+    document.querySelector('#session').style.display = 'flex'
+    document.querySelector('#landing').style.display = 'none'
 
-      if(zmClient.getAllUser().length > 1) {
-        document.querySelector('#participant-name').textContent = zmClient.getAllUser()[1].displayName
+    // loop through and create 2d array. Then loop through the first page and implement the below logic
 
-        if(zmClient.getAllUser()[1].bVideoOn) {
-          zmStream.renderVideo(document.querySelector('#participant-canvas'), zmClient.getAllUser()[1].userId, 1920, 1080, 0, 0, 3).then(() => {
-            document.querySelector('#participant-canvas').style.display = 'block'
-            document.querySelector('#participant-name').style.display = 'none'
+    zmClient.getAllUser().forEach((user) => {
+      if(user.userId !== zmClient.getCurrentUserInfo().userId) {
+        if(user.bVideoOn) {
+
+          let tile = document.createElement('div')
+          tile.classList.add("video-tile");
+          tile.setAttribute('data-user', user.userId)
+
+          let name = document.createElement('p')
+          name.textContent = user.displayName
+
+          tile.appendChild(name);
+
+          zmStream.attachVideo(user.userId, 3).then((data) => {
+            console.log(data)
+            tile.appendChild(data);
+
+            document.querySelector('video-player-container').appendChild(tile)
           })
+        } else {
+          let tile = document.createElement('div')
+          tile.classList.add("video-tile");
+          tile.setAttribute('data-user', user.userId)
+
+          let name = document.createElement('p')
+          name.textContent = user.displayName
+
+          tile.appendChild(name);
+
+          let videoOff = document.createElement('div')
+          videoOff.classList.add('video-off');
+
+          tile.appendChild(videoOff);
+
+          document.querySelector('video-player-container').appendChild(tile)
         }
       }
-
-      addEventListeners()
-    }
+    })
+    addEventListeners()
   }).catch((error) => {
     console.log(error)
     document.querySelector('#error').style.display = 'block'
@@ -177,47 +206,69 @@ function unmuteAudio() {
 }
 
 function leaveSession() {
-  zmClient.leave()
+  zmStream.stopAudio().then(() => {
+    if(zmClient.getCurrentUserInfo().bVideoOn) {
+      stopVideo()
+  
+      // it might be rendering on canvas still
+      if(zmStream.isRenderSelfViewWithVideoElement()) {
+        // all good
+      } else {
+        zmStream.stopRenderVideo(document.querySelector('#self-view-canvas'), zmClient.getCurrentUserInfo().userId)
+      }
+    }
 
-  removeEventListeners()
+    zmClient.getAllUser().forEach((user) => {
+      if(user.userId !== zmClient.getCurrentUserInfo().userId) {
+        if(user.bVideoOn) {
+  
+          zmStream.detachVideo(user.userId)
+  
+          // empty video player container?
+        } else {
+          // do nothing?
+        }
+      }
+    })
 
-  document.querySelector('#session').style.display = 'none'
-  document.querySelector('#muteAudio').style.display = 'none'
-  document.querySelector('#unmuteAudio').style.display = 'none'
-  document.querySelector('#stopVideo').style.display = 'none'
-  document.querySelector('#self-view-video').style.display = 'none'
-  document.querySelector('#participant-canvas').style.display = 'none'
-  document.querySelector('#self-view-canvas').style.display = 'none'
+    document.querySelector('video-player-container').replaceChildren()
+    // empty video player container?
 
-  document.querySelector('#startVideo').style.display = 'inline-block'
-  document.querySelector('#startAudio').style.display = 'inline-block'
-  document.querySelector('#self-view-name').style.display = 'block'
+    zmClient.leave()
 
-  document.querySelector('#participant-name').textContent = '⏳ Waiting for participant to join...'
-  document.querySelector('#getSignature').textContent = 'Join Session'
-  document.querySelector('#getSignature').disabled = false
-  document.querySelector('#startVideo').textContent = 'Start Video'
-  document.querySelector('#startVideo').disabled = false
+    removeEventListeners()
 
-  document.querySelector('#landing').style.display = 'flex'
+    document.querySelector('#session').style.display = 'none'
+    document.querySelector('#muteAudio').style.display = 'none'
+    document.querySelector('#unmuteAudio').style.display = 'none'
+    document.querySelector('#stopVideo').style.display = 'none'
+    document.querySelector('#self-view-video').style.display = 'none'
+
+    document.querySelector('#startVideo').style.display = 'inline-block'
+    document.querySelector('#startAudio').style.display = 'inline-block'
+    document.querySelector('#self-view-name').style.display = 'block'
+
+    document.querySelector('#getSignature').textContent = 'Join Session'
+    document.querySelector('#getSignature').disabled = false
+    document.querySelector('#startVideo').textContent = 'Start Video'
+    document.querySelector('#startVideo').disabled = false
+
+    document.querySelector('#landing').style.display = 'flex'
+  })
 }
 
 let connectionChange = ((payload) => {
   console.log(payload)
 
   if(payload.state === 'Reconnecting') {
-    document.querySelector('#participant-name').textContent = 'Lost connection, trying to reconnect...'
+    console.log('myself reconnecting')
   } else if(payload.state === 'Fail') {
-    document.querySelector('#participant-name').textContent = 'Disconnected.'
-
-    leaveSession()
+    console.log('myself disconnected')
+    // leaveSession()
   } else if(payload.state === 'Connected') {
-    if(zmClient.getAllUser().length > 1) {
-      document.querySelector('#participant-name').textContent = zmClient.getAllUser()[1].displayName
-    } else {
-      document.querySelector('#participant-name').textContent = '⏳ Waiting for participant to join...'
-    }
+    console.log('myself connected')
   }
+  // session ended case? Maybe its not implemented
 })
 
 let mediaSdkChange = ((payload) => {
@@ -234,43 +285,96 @@ let mediaSdkChange = ((payload) => {
 
 let userAdded = ((payload) => {
 
-  if(zmClient.getAllUser().length < 3) {
-    if(payload[0].userId !== zmClient.getCurrentUserInfo().userId) {
-      document.querySelector('#participant-name').textContent = payload[0].displayName
-    }
+  // add the new user to the pages users array in the last position. Render if they are within the first or "current" page
+
+  if(payload[0].userId !== zmClient.getCurrentUserInfo().userId) {
+    let tile = document.createElement('div')
+    tile.classList.add("video-tile");
+    tile.setAttribute('data-user', payload[0].userId)
+
+    let name = document.createElement('p')
+    name.textContent = payload[0].displayName
+
+    tile.appendChild(name);
+
+    // cant do this since user updated is triggered
+    // let videoOff = document.createElement('div')
+    // videoOff.classList.add('video-off');
+
+    // tile.appendChild(videoOff);
+
+    document.querySelector('video-player-container').appendChild(tile)
   }
 })
 
+// why does this trigger on join
 let userUpdated = ((payload) => {
-  console.log(payload)
+
+  // show or unshow video if the user is within the "current" page
+
+  console.log('user-updated', payload)
 
   if(payload[0].userId !== zmClient.getCurrentUserInfo().userId) {
     
     if(payload[0].hasOwnProperty('bVideoOn') && payload[0].bVideoOn === true) {
-      zmStream.renderVideo(document.querySelector('#participant-canvas'), payload[0].userId, 1920, 1080, 0, 0, 3).then(() => {
-        document.querySelector('#participant-canvas').style.display = 'block'
-        document.querySelector('#participant-name').style.display = 'none'
+
+      console.log('video on')
+
+      let tile = document.querySelectorAll(`[data-user='${payload[0].userId}']`)[0]
+
+      let videoOff = tile.children[1]
+      console.log(videoOff)
+
+      tile.removeChild(videoOff)
+
+      zmStream.attachVideo(payload[0].userId, 3).then((data) => {
+        console.log(data)
+        tile.appendChild(data);
       })
+
     } else if(payload[0].hasOwnProperty('bVideoOn') && payload[0].bVideoOn === false) {
-      zmStream.stopRenderVideo(document.querySelector('#participant-canvas'), payload[0].userId).then(() => {
-        document.querySelector('#participant-canvas').style.display = 'none'
-        document.querySelector('#participant-name').style.display = 'block'
+
+      console.log('video off')
+
+      let tile = document.querySelectorAll(`[data-user='${payload[0].userId}']`)[0]
+
+      zmStream.detachVideo(payload[0].userId).then((data) => {
+
+        // strange
+        if(data) {
+          tile.removeChild(data[0])
+        }
+
+        let videoOff = document.createElement('div')
+        videoOff.classList.add('video-off');
+        tile.appendChild(videoOff);
       })
     }
   }
 })
 
 let userRemoved = ((payload) => {
-  console.log(payload)
-  if(zmClient.getAllUser().length < 2) {
-    if(payload.length && payload[0].userId !== zmClient.getCurrentUserInfo().userId) {
-      document.querySelector('#participant-name').textContent = 'Participant left...'
 
-      zmStream.stopRenderVideo(document.querySelector('#participant-canvas'), payload[0].userId).then(() => {
-        document.querySelector('#participant-canvas').style.display = 'none'
-        document.querySelector('#participant-name').style.display = 'block'
-      })
-    }
+  // remove the new user from the pages users array and shift the arrays so there is always 9 in each one. Remove from the dom if they are within the "current" page.
+  // if the array is shifted, we will have to adjust the rendering somehow
+
+  // if current page && user on that page was removed, need to rerender the page.
+
+  console.log(payload)
+
+  if(payload[0].bVideoOn) {
+
+    let tile = document.querySelectorAll(`[data-user='${payload[0].userId}']`)[0]
+
+    zmStream.detachVideo(payload[0].userId).then(() => {
+      console.log('video detached')
+      tile.remove()
+      console.log('tile removed')
+    })
+  } else {
+    let tile = document.querySelectorAll(`[data-user='${payload[0].userId}']`)[0]
+    tile.remove()
+    console.log('tile removed')
   }
 })
 
@@ -289,3 +393,25 @@ function removeEventListeners() {
   zmClient.off('user-updated', userUpdated)
   zmClient.off('user-removed', userRemoved)
 }
+
+/* support 9 videos via flex box */
+/* somehow support pagination or do a cap to limit to 9 */
+/* detect mobile browser and limit to 4 videos */
+
+/* check if max videos */
+/* check if mobile device */
+
+/* if over, don't render, add to next "page" list */
+/* when next page is called, follow what I had with docs */
+/* when previous page is called, follow what I had with docs */
+
+/* when user joins, loop through getAllUser and populate array. Then render based on that */
+
+/* when a user leaves remove them from the array */
+
+/* when a new user joins, add them to the array */
+
+/* pages[pages.length-1] */
+/* users[users.length-1] */
+
+/* need to keep track of what page the user is in from the dom so I know where to target it? */

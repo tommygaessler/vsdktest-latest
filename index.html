@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>1:1 Video Chat</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://kit.fontawesome.com/09e1d3e206.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <main>
@@ -25,8 +26,9 @@
           <canvas id="self-view-canvas" width="1920" height="1080"></canvas>
         </div>
         <div class="participant">
-          <h3 id="participant-name">⏳ Waiting for participant to join...</h3>
-          <canvas id="participant-canvas" width="1920" height="1080"></canvas>
+
+          <video-player-container></video-player-container>
+
         </div>
 
         <div class="controls">
@@ -43,7 +45,7 @@
       </div>
     </main>
 
-    <script src="https://source.zoom.us/videosdk/zoom-video-1.10.5.min.js"></script>
+    <script src="https://source.zoom.us/videosdk/zoom-video-1.10.7.min.js"></script>
     <script type="text/javascript" src="scripts.js"></script>
   </body>
 </html>
