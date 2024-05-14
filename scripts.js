@@ -17,14 +17,16 @@ let geoRegions
 let cloudRecordingOption
 let cloudRecordingElection
 
-let maxVideosPerPage = 9
+let maxUsersPerPage = 9
 let maxUsers = 10000
-let currentPage = 0
+let currentPage = 1
 
 // let videoUsers = [[0,1,2,3,4,5,6,7,8], [9,10,11,12,13,14,15]]
 
+// try rendering two videos at the same time from the same user.
+
 zmClient.init('US-en', 'Global', {
-  enforceMultipleVideos: true,
+  enforceMultipleVideos: { disableRenderLimits: true },
   patchJsMedia: true,
   leaveOnPageUnload: true,
   stayAwake: true
@@ -127,7 +129,7 @@ function startVideo() {
   document.querySelector('#startVideo').disabled = true
 
   if(zmStream.isRenderSelfViewWithVideoElement()) {
-    zmStream.startVideo({ videoElement: document.querySelector('#self-view-video'), mirrored: true, hd: true }).then(() => {
+    zmStream.startVideo({ videoElement: document.querySelector('#self-view-video'), mirrored: true, hd: true, originalRatio: true }).then(() => {
       document.querySelector('#self-view-video').style.display = 'block'
       document.querySelector('#self-view-name').style.display = 'none'
 
@@ -140,7 +142,7 @@ function startVideo() {
       console.log(error)
     })
   } else {
-    zmStream.startVideo({ mirrored: true,  hd: true }).then(() => {
+    zmStream.startVideo({ mirrored: true,  hd: true, originalRatio: true }).then(() => {
       zmStream.renderVideo(document.querySelector('#self-view-canvas'), zmClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
         document.querySelector('#self-view-canvas').style.display = 'block'
         document.querySelector('#self-view-name').style.display = 'none'
@@ -415,3 +417,31 @@ function removeEventListeners() {
 /* users[users.length-1] */
 
 /* need to keep track of what page the user is in from the dom so I know where to target it? */
+
+// don't show if current page === 0
+function previous() {
+  console.log('currentPage', currentPage)
+
+  currentPage -= 1
+  console.log('new currentPage', currentPage)
+
+  for (let index = currentPage*maxUsersPerPage; index > (currentPage*maxUsersPerPage)-maxUsersPerPage; index--) {
+    console.log(index)
+  }
+
+}
+
+// 0*9=0, 1*9=9, 2*9=18, 3*9=27
+// currentPage*maxUsersPerPage=end
+// end-maxUsers=start
+
+// don't show if current page === last page.
+function next() {
+  console.log('new currentPage', currentPage)
+  for (let index = (currentPage*maxUsersPerPage)-maxUsersPerPage; index < currentPage*maxUsersPerPage; index++) {
+    console.log(index)
+  }
+
+  currentPage += 1
+  console.log('new currentPage', currentPage)
+}

@@ -25,6 +25,14 @@ input, button {
   max-width: 100vw;
 }
 
+.next {
+
+}
+
+.previous {
+  
+}
+
 video-player-container {
   width: 100%;
   /* height: 1000px; */
