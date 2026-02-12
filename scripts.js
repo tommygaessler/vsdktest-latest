@@ -128,37 +128,43 @@ function startVideo() {
   document.querySelector('#startVideo').textContent = 'Starting Video...'
   document.querySelector('#startVideo').disabled = true
 
-  if(zmStream.isRenderSelfViewWithVideoElement()) {
-    zmStream.startVideo({ videoElement: document.querySelector('#self-view-video'), mirrored: true, hd: true, originalRatio: true }).then(() => {
-      document.querySelector('#self-view-video').style.display = 'block'
-      document.querySelector('#self-view-name').style.display = 'none'
-
-      document.querySelector('#startVideo').style.display = 'none'
-      document.querySelector('#stopVideo').style.display = 'inline-block'
-
-      document.querySelector('#startVideo').textContent = 'Start Video'
-      document.querySelector('#startVideo').disabled = false
-    }).catch((error) => {
-      console.log(error)
+  zmStream.startVideo().then(() => {
+    zmStream.attachVideo(zmClient.getCurrentUserInfo().userId, 3).then((userVideo) => {
+      document.querySelector('video-player-container').appendChild(userVideo)
     })
-  } else {
-    zmStream.startVideo({ mirrored: true,  hd: true, originalRatio: true }).then(() => {
-      zmStream.renderVideo(document.querySelector('#self-view-canvas'), zmClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
-        document.querySelector('#self-view-canvas').style.display = 'block'
-        document.querySelector('#self-view-name').style.display = 'none'
+  })
 
-        document.querySelector('#startVideo').style.display = 'none'
-        document.querySelector('#stopVideo').style.display = 'inline-block'
+  // if(zmStream.isRenderSelfViewWithVideoElement()) {
+  //   zmStream.startVideo({ videoElement: document.querySelector('#self-view-video'), mirrored: true, hd: true, originalRatio: true }).then(() => {
+  //     document.querySelector('#self-view-video').style.display = 'block'
+  //     document.querySelector('#self-view-name').style.display = 'none'
 
-        document.querySelector('#startVideo').textContent = 'Start Video'
-        document.querySelector('#startVideo').disabled = false
-      }).catch((error) => {
-        console.log(error)
-      })
-    }).catch((error) => {
-      console.log(error)
-    })
-  }
+  //     document.querySelector('#startVideo').style.display = 'none'
+  //     document.querySelector('#stopVideo').style.display = 'inline-block'
+
+  //     document.querySelector('#startVideo').textContent = 'Start Video'
+  //     document.querySelector('#startVideo').disabled = false
+  //   }).catch((error) => {
+  //     console.log(error)
+  //   })
+  // } else {
+  //   zmStream.startVideo({ mirrored: true,  hd: true, originalRatio: true }).then(() => {
+  //     zmStream.renderVideo(document.querySelector('#self-view-canvas'), zmClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
+  //       document.querySelector('#self-view-canvas').style.display = 'block'
+  //       document.querySelector('#self-view-name').style.display = 'none'
+
+  //       document.querySelector('#startVideo').style.display = 'none'
+  //       document.querySelector('#stopVideo').style.display = 'inline-block'
+
+  //       document.querySelector('#startVideo').textContent = 'Start Video'
+  //       document.querySelector('#startVideo').disabled = false
+  //     }).catch((error) => {
+  //       console.log(error)
+  //     })
+  //   }).catch((error) => {
+  //     console.log(error)
+  //   })
+  // }
 }
 
 function stopVideo() {
